@@ -6,3 +6,6 @@ tests/bootstrap
 tests/tmp
 vendor
 composer.lock
+/.settings
+/.buildpath
+/.project
