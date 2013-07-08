@@ -53,6 +53,9 @@ class lessc {
 	public $importDisabled = false;
 	public $importDir = '';
 
+	public $allowUrlRewrite = false; // rewrite urls relative to imported files
+	public $baseUrlPath = null;
+
 	protected $numberPrecision = null;
 
 	protected $allParsedFiles = array();
@@ -787,12 +790,16 @@ class lessc {
 	 * The input is expected to be reduced. This function will not work on
 	 * things like expressions and variables.
 	 */
-	protected function compileValue($value) {
+	protected function compileValue($value, $inUrl = false) {
 		switch ($value[0]) {
 		case 'list':
 			// [1] - delimiter
 			// [2] - array of values
-			return implode($value[1], array_map(array($this, 'compileValue'), $value[2]));
+			$values = array();
+			foreach ($value[2] as $item) {
+				$values[] = $this->compileValue($item, $inUrl);
+			}
+			return implode($value[1], $values);
 		case 'raw_color':
 			if (!empty($this->formatter->compressColors)) {
 				return $this->compileValue($this->coerceColor($value));
@@ -814,10 +821,14 @@ class lessc {
 			list(, $delim, $content) = $value;
 			foreach ($content as &$part) {
 				if (is_array($part)) {
-					$part = $this->compileValue($part);
+					$part = $this->compileValue($part,false);
 				}
 			}
-			return $delim . implode($content) . $delim;
+			$content = implode($content);
+			if ($inUrl && $this->allowUrlRewrite) {
+				$content = $this->rewriteUrls($content);
+			}
+			return $delim . $content . $delim;
 		case 'color':
 			// [1] - red component (either number or a %)
 			// [2] - green component
@@ -845,7 +856,7 @@ class lessc {
 
 		case 'function':
 			list(, $name, $args) = $value;
-			return $name.'('.$this->compileValue($args).')';
+			return $name.'('.$this->compileValue($args, $name === 'url').')';
 		default: // assumed to be unit
 			$this->throwError("unknown value type: $value[0]");
 		}
@@ -3555,6 +3566,49 @@ class lessc_parser {
 		return $out.$text;
 	}
 
+	/**
+	 * Change relative paths according to path to root .less file.
+	 */
+	protected function rewriteUrls($url){
+		$baseImportDir = realpath(isset($this->baseUrlPath) ? $this->baseUrlPath : end($this->importDir));
+		$lastImportDir = realpath(reset($this->importDir));
+
+		if ($baseImportDir === $lastImportDir)
+			return $url;
+
+		//Retrieve url without query arguments and anchor
+		$arguments = $anchor = null;
+		$cleanUrl = $url;
+		if (strpos($cleanUrl,'?') !== false) list($cleanUrl, $arguments) = explode('?', $cleanUrl);
+		if (strpos($cleanUrl,'#') !== false) list($cleanUrl, $anchor) = explode('#', $cleanUrl);
+
+		$urlPath = realpath($lastImportDir.DIRECTORY_SEPARATOR.$cleanUrl);
+		if ($urlPath === false)$url;
+
+		$baseArray = explode(DIRECTORY_SEPARATOR, $baseImportDir);
+		$urlArray = explode(DIRECTORY_SEPARATOR, $urlPath);
+
+		$i = 0;
+		foreach ($baseArray as $i => $segment) {
+			if (!isset($baseArray[$i], $urlArray[$i]) || $baseArray[$i] !== $urlArray[$i]) break;
+			else $i++; // if the above condition is not satisfied, `i` must be equal to count($baseArray)
+		}
+
+		//Return url
+		return str_ireplace(
+			$cleanUrl,
+			str_repeat('../', count($baseArray) - $i) . implode('/', array_slice($urlArray, $i)),
+			$url
+		);
+	}
+
+	/**
+	 * Define if urls should be rewriting
+	 * @param boolean $allowUrlRewrite
+	 */
+	public function setAllowUrlRewrite($allowUrlRewrite){
+		$this->allowUrlRewrite = (bool)$allowUrlRewrite;
+	}
 }
 
 class lessc_formatter_classic {
