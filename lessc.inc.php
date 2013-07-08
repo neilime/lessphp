@@ -1900,6 +1900,57 @@ class lessc {
 		return $less->cachedCompile($in, $force);
 	}
 
+	/**
+	 * Change relative paths according to path to root .less file.
+	 */
+	protected function rewriteUrls($url){
+		$baseImportDir = realpath(isset($this->baseUrlPath) ? $this->baseUrlPath : end($this->importDir));
+		$lastImportDir = realpath(reset($this->importDir));
+
+		if ($baseImportDir === $lastImportDir) return $url;
+
+		//Retrieve url without query arguments and anchor
+		$arguments = $anchor = null;
+		$cleanUrl = $url;
+		if (strpos($cleanUrl,'?') !== false) list($cleanUrl, $arguments) = explode('?', $cleanUrl);
+		if (strpos($cleanUrl,'#') !== false) list($cleanUrl, $anchor) = explode('#', $cleanUrl);
+
+		$urlPath = realpath($lastImportDir.DIRECTORY_SEPARATOR.$cleanUrl);
+		if ($urlPath === false)$url;
+
+		$baseArray = explode(DIRECTORY_SEPARATOR, $baseImportDir);
+		$urlArray = explode(DIRECTORY_SEPARATOR, $urlPath);
+
+		$i = 0;
+		foreach ($baseArray as $i => $segment) {
+			if (!isset($baseArray[$i], $urlArray[$i]) || $baseArray[$i] !== $urlArray[$i]) break;
+			else $i++; // if the above condition is not satisfied, `i` must be equal to count($baseArray)
+		}
+
+		//Return url
+		return str_ireplace(
+				$cleanUrl,
+				str_repeat('../', count($baseArray) - $i) . implode('/', array_slice($urlArray, $i)),
+				$url
+		);
+	}
+
+	/**
+	 * Define if urls should be rewriting
+	 * @param boolean $allowUrlRewrite
+	 */
+	public function setAllowUrlRewrite($allowUrlRewrite){
+		$this->allowUrlRewrite = (bool)$allowUrlRewrite;
+	}
+
+	/**
+	 * Define base url path, used by url rewriting process
+	 * @param string $baseUrlPath
+	 */
+	public function setBaseUrlPath($baseUrlPath){
+		$this->baseUrlPath = $baseUrlPath;
+	}
+
 	static protected $cssColors = array(
 		'aliceblue' => '240,248,255',
 		'antiquewhite' => '250,235,215',
@@ -3370,50 +3421,6 @@ class lessc_parser {
 		}
 
 		return $out.$text;
-	}
-
-	/**
-	 * Change relative paths according to path to root .less file.
-	 */
-	protected function rewriteUrls($url){
-		$baseImportDir = realpath(isset($this->baseUrlPath) ? $this->baseUrlPath : end($this->importDir));
-		$lastImportDir = realpath(reset($this->importDir));
-
-		if ($baseImportDir === $lastImportDir)
-			return $url;
-
-		//Retrieve url without query arguments and anchor
-		$arguments = $anchor = null;
-		$cleanUrl = $url;
-		if (strpos($cleanUrl,'?') !== false) list($cleanUrl, $arguments) = explode('?', $cleanUrl);
-		if (strpos($cleanUrl,'#') !== false) list($cleanUrl, $anchor) = explode('#', $cleanUrl);
-
-		$urlPath = realpath($lastImportDir.DIRECTORY_SEPARATOR.$cleanUrl);
-		if ($urlPath === false)$url;
-
-		$baseArray = explode(DIRECTORY_SEPARATOR, $baseImportDir);
-		$urlArray = explode(DIRECTORY_SEPARATOR, $urlPath);
-
-		$i = 0;
-		foreach ($baseArray as $i => $segment) {
-			if (!isset($baseArray[$i], $urlArray[$i]) || $baseArray[$i] !== $urlArray[$i]) break;
-			else $i++; // if the above condition is not satisfied, `i` must be equal to count($baseArray)
-		}
-
-		//Return url
-		return str_ireplace(
-			$cleanUrl,
-			str_repeat('../', count($baseArray) - $i) . implode('/', array_slice($urlArray, $i)),
-			$url
-		);
-	}
-
-	/**
-	 * Define if urls should be rewriting
-	 * @param boolean $allowUrlRewrite
-	 */
-	public function setAllowUrlRewrite($allowUrlRewrite){
-		$this->allowUrlRewrite = (bool)$allowUrlRewrite;
 	}
 }
 
