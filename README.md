@@ -6,6 +6,16 @@
 `lessphp` is a compiler for LESS written in PHP. The documentation is great,
 so check it out: <http://leafo.net/lessphp/docs/>.
 
+---
+
+### This fork ([neilime/lessphp](https://github.com/neilime/lessphp))
+
+The only change in this fork is the ability to change relative paths according to path to root .less file. 
+This fork will be mandatory until the pull request [#291](https://github.com/leafo/lessphp/pull/291) is accepted, 
+or an alternative solution is proposed.
+
+---
+
 Here's a quick tutorial:
 
 ### How to use in your PHP project
