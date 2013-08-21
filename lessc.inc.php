@@ -2050,7 +2050,7 @@ class lessc {
 		if (strpos($cleanUrl,'#') !== false) list($cleanUrl, $anchor) = explode('#', $cleanUrl);
 
 		$urlPath = realpath($lastImportDir.DIRECTORY_SEPARATOR.$cleanUrl);
-		if ($urlPath === false)$url;
+		if ($urlPath === false)return $url;
 
 		$baseArray = explode(DIRECTORY_SEPARATOR, $baseImportDir);
 		$urlArray = explode(DIRECTORY_SEPARATOR, $urlPath);
